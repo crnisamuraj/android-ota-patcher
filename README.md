@@ -1,26 +1,32 @@
-# Manual patch KSU
+# Patch Boot Script Documentation
 
-extract payload.bin from factory OTA
+This script is designed to extract and patch the boot image using a provided OTA zip and patched kernel.
 
-then extract images from payload:
-
-```shell
-payload-dumper-go ./payload.bin
+## Usage
+```bash
+./patch-boot.sh <path_to_ota_zip> <path_to_patched_kernel_zip> [workdir]
 ```
-get boot.img from extracted images
 
-Download the AnyKernel3 ZIP file provided by KernelSU that matches the KMI version of your device. You can refer to Install with custom Recovery.
+### Arguments
+- `<path_to_ota_zip>`: Path to the OTA zip file.
+- `<path_to_patched_kernel_zip>`: Path to the zip file containing the patched kernel. (Anykernel3)
+- `[workdir]`: Optional. Specify a directory to store all output files and use for relative paths. Defaults to the current directory.
 
-Unpack the AnyKernel3 package and get the Image file, which is the kernel file of KernelSU.
+### Steps Performed
+1. Extract `payload.bin` from the OTA zip.
+2. Extract images from `payload.bin`.
+3. Extract `Image` from the patched kernel zip.
+4. Replace the kernel in `boot.img` with the patched `Image`.
+5. Repack the `boot.img` to create `new-boot.img`.
 
-```shell
-./magiskboot unpack boot.img
-``` 
-to unpack boot.img, you will get a kernel file, this is your stock kernel.
+### Output
+- `new-boot.img`: The patched boot image ready for use.
 
-Replace kernel with Image by running the command: mv -f Image kernel
+### Notes
+- Ensure all required dependencies (`payload-dumper-go`, `magiskboot`) are installed and available in your PATH.
+- Use the `WORKDIR` environment variable to override the default working directory for all output files.
 
-```shell
-./magiskboot repack boot.img
+### Example
+```bash
+./patch-boot.sh factory-ota.zip patched-kernel.zip /path/to/workdir
 ```
- to repack boot image, and you will get a new-boot.img file, flash this file to device by fastboot.
