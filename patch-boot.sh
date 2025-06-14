@@ -1,3 +1,28 @@
+
+# patch-boot.sh
+#
+# Description:
+#   This script extracts the boot image (boot.img) from a Google Pixel OTA zip, replaces its kernel with a patched kernel (from a provided zip),
+#   and repacks the boot image using Magisk tools. The result is a new-boot.img ready for flashing or further use.
+#
+# Usage:
+#   ./patch-boot.sh <path_to_ota_zip> <path_to_patched_kernel_zip> [workdir]
+#
+#   <path_to_ota_zip>            Path to the original OTA zip file (e.g., cheetah-ota-*.zip)
+#   <path_to_patched_kernel_zip> Path to the zip file containing the patched kernel (must contain an 'Image' file)
+#   [workdir]                    Optional. Working directory for relative paths and output (defaults to current directory)
+#
+# Requirements:
+#   - payload-dumper-go (must be in PATH)
+#   - magiskboot (must be in PATH)
+#   - unzip
+#
+# Output:
+#   - new-boot.img in the specified or current working directory
+#
+# Example:
+#   ./patch-boot.sh cheetah-ota-bp2a.250605.031.a2-0662933e.zip NEXT-android14-6.1.124-2025-02-AnyKernel3.zip ./605
+#
 #!/bin/bash
 
 workdir=${WORKDIR:-$3}
