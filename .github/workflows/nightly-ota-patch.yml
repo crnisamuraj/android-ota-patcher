@@ -1,0 +1,42 @@
+name: Nightly OTA Patch
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Every day at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  nightly-ota-patch:
+    runs-on: ubuntu-latest
+    env:
+      DEVICES: ${{ secrets.DEVICES || 'cheetah:cheetah' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y wget unzip chromium-browser chromium-chromedriver
+      - name: Run OTA patch workflow
+        run: bash ci_ota_patch.sh
+      - name: Commit and push last_ota_url.txt changes
+        run: |
+          if [[ -n $(git status --porcelain devices/*/last_ota_url.txt) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add devices/*/last_ota_url.txt
+            git commit -m "ci: update last_ota_url.txt after nightly patch"
+            git push || echo "Warning: git push failed (possibly due to permissions)"
+          fi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-artifacts
+          path: |
+            devices/*/last_ota_url.txt
+            devices/*/*.zip
+            devices/*/*.patched

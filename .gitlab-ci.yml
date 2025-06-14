@@ -1,0 +1,28 @@
+stages:
+  - nightly
+
+nightly_ota_check:
+  stage: nightly
+  script:
+    # Set DEVICES from CI/CD variable or fallback (handled in ci_ota_patch.sh)
+    - bash ci_ota_patch.sh
+    # Commit and push last_ota_url.txt changes if any
+    - |
+      if [ -n "$(git status --porcelain devices/*/last_ota_url.txt)" ]; then
+        git config user.name "CI Bot"
+        git config user.email "ci@example.com"
+        git add devices/*/last_ota_url.txt
+        git commit -m "ci: update last_ota_url.txt after nightly patch"
+        git push || echo "Warning: git push failed (possibly due to protected branch)"
+      fi
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      start_in: '00:00'
+  tags:
+    - linux
+  artifacts:
+    paths:
+      - devices/*/last_ota_url.txt
+      - devices/*/*.zip
+      - devices/*/*.patched
+    expire_in: 15 days
