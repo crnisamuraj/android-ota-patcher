@@ -1,0 +1,12 @@
+avb.key
+avb_pkmd.bin
+ota.crt
+ota.key
+*.key
+*.crt
+*.pem
+*.apk
+*.zip
+*.zip.patched
+*.zip.signed
+*.img
