@@ -28,5 +28,5 @@ This script is designed to extract and patch the boot image using a provided OTA
 
 ### Example
 ```bash
-./patch-boot.sh factory-ota.zip patched-kernel.zip /path/to/workdir
+./patch-boot.sh factory-ota.zip patched-kernel.zip path/to/workdir
 ```
