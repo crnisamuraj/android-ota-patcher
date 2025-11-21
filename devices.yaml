@@ -1,0 +1,28 @@
+# devices.yaml
+# Device configuration for OTA patch pipeline
+#
+# Example structure:
+#
+# devices:
+#   - name: Pixel 7 Pro
+#     folder: cheetah
+#     codename: cheetah
+#     preinit_device: /dev/block/by-name/preinit
+#     magisk_apk: Magisk-v29.0.apk
+#   - name: Pixel 8
+#     folder: pixel8
+#     codename: shiba
+#     preinit_device: /dev/block/by-name/preinit
+#     magisk_apk: Magisk-v29.0.apk
+#
+devices:
+  - name: Pixel 7 Pro
+    folder: cheetah
+    codename: cheetah
+    preinit_device: /dev/block/by-name/preinit
+    magisk_apk: Magisk-v29.0.apk
+  - name: Pixel 8
+    folder: pixel8
+    codename: shiba
+    preinit_device: /dev/block/by-name/preinit
+    magisk_apk: Magisk-v29.0.apk

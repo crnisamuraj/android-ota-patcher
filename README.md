@@ -1,4 +1,71 @@
-# Patch Boot Script Documentation
+# Android OTA Patcher
+
+An automated tool for downloading and patching Google Pixel OTA updates with avbroot. Supports containerized deployment for easy setup and CI/CD integration.
+
+## 🐳 Container Usage (Recommended)
+
+The project is packaged as a container for easy deployment and dependency management.
+
+### Quick Start
+
+1. **Build the container:**
+   ```bash
+   ./build-container.sh
+   ```
+
+2. **Create directories for data and keys:**
+   ```bash
+   mkdir -p data keys
+   # Copy your signing keys to ./keys/
+   cp /path/to/your/avb.key ./keys/
+   cp /path/to/your/ota.key ./keys/
+   cp /path/to/your/ota.crt ./keys/
+   cp /path/to/your/Magisk-v29.0.apk ./keys/
+   ```
+
+3. **Run commands:**
+   ```bash
+   # Show help
+   podman run --rm android-ota-patcher
+
+   # Scrape latest OTA URL
+   podman run --rm android-ota-patcher scrape --device cheetah
+
+   # Download and patch OTA
+   podman run --rm \
+     -v ./data:/data:z \
+     -v ./keys:/workspace/keys:z \
+     android-ota-patcher ci
+   ```
+
+### Container Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `scrape` | Get latest OTA URL for device | `scrape --device cheetah` |
+| `download` | Download latest OTA | `download --device cheetah` |
+| `patch` | Patch OTA with avbroot | `patch --ota /data/ota.zip --mode rootless` |
+| `ci` | Full CI pipeline | `ci --devices "cheetah:cheetah"` |
+| `boot-patch` | Patch boot with custom kernel | `boot-patch /data/ota.zip /data/kernel.zip` |
+| `sideload` | Sideload to device | `sideload /data/ota.zip.patched` |
+| `devices` | List configured devices | `devices` |
+| `shell` | Interactive container shell | `shell` |
+
+### Docker Compose
+
+Use docker-compose for easier management:
+
+```bash
+# Run CI pipeline
+docker-compose up ota-ci
+
+# Interactive shell
+docker-compose up ota-shell
+```
+
+## 📱 Native Installation
+
+### Patch Boot Script Documentation
 
 This script is designed to extract and patch the boot image using a provided OTA zip and patched kernel.
 
@@ -91,4 +158,74 @@ DEVICES="pixel7pro:cheetah pixel7:panther"
 ```
 
 ## License
+MIT
+
+## 🐳 Container Architecture
+
+The container is based on Fedora 40 and includes:
+
+- **System Tools:** wget, curl, unzip, git, openssl, android-tools
+- **Chrome/Chromium:** For web scraping with Selenium
+- **Python Environment:** Virtual environment with selenium, webdriver-manager, pyyaml
+- **Android Tools:** avbroot, payload-dumper-go, magiskboot
+- **Java Runtime:** OpenJDK 17 for Android tooling
+
+### Volume Mounts
+
+- `/data` - Working directory for downloads and temporary files
+- `/workspace/keys` - Directory for signing keys (mounted read-only)
+
+### Required Keys
+
+Place these files in your keys directory:
+
+- `avb.key` - AVB signing private key
+- `ota.key` - OTA signing private key
+- `ota.crt` - OTA signing certificate
+- `Magisk-v29.0.apk` - Magisk APK (for Magisk patching mode)
+
+### Environment Variables
+
+- `DATA_DIR` - Data directory path (default: /data)
+- `DEVICES` - Default devices list for CI mode
+- `DEBUG` - Enable debug output (1/0)
+- `CHROME_BINARY` - Chrome binary path (auto-configured)
+
+### Sideload Usage
+
+For sideloading to a physical device, run with USB access:
+
+```bash
+podman run --rm \
+  -v ./data:/data \
+  --privileged \
+  -v /dev/bus/usb:/dev/bus/usb \
+  android-ota-patcher sideload /data/ota.zip.patched
+```
+
+## 🔧 Development
+
+### Building Locally
+
+```bash
+# Build with Podman
+podman build -t android-ota-patcher -f Containerfile .
+
+# Build with Docker
+docker build -t android-ota-patcher -f Containerfile .
+
+# Build for different architecture
+TARGET_ARCH=arm64 ./build-container.sh
+```
+
+### Testing
+
+Run the examples script to test functionality:
+
+```bash
+./run-examples.sh
+```
+
+## 📄 License
+
 MIT

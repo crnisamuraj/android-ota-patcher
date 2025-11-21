@@ -1,0 +1,64 @@
+# Android OTA Patcher - Docker Compose
+# 
+# This compose file provides a convenient way to run the Android OTA Patcher
+# with proper volume mounts and environment configuration.
+#
+
+version: '3.8'
+
+services:
+  ota-patcher:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: android-ota-patcher:latest
+    container_name: android-ota-patcher
+    
+    # Volumes for persistent data and keys
+    volumes:
+      - ./data:/data
+      - ./keys:/workspace/keys:ro
+    
+    # Environment variables
+    environment:
+      - DATA_DIR=/data
+      - DEVICES=cheetah:cheetah
+      # Uncomment for debug mode
+      # - DEBUG=1
+    
+    # Command can be overridden at runtime
+    command: ["--help"]
+    
+    # Remove container after execution
+    restart: "no"
+
+  # Service for CI/CD pipeline (runs periodically)  
+  ota-ci:
+    extends: ota-patcher
+    container_name: android-ota-patcher-ci
+    command: ["ci"]
+    # Uncomment for scheduled runs
+    # restart: unless-stopped
+    
+  # Service for interactive shell access
+  ota-shell:
+    extends: ota-patcher  
+    container_name: android-ota-patcher-shell
+    command: ["shell"]
+    tty: true
+    stdin_open: true
+    restart: "no"
+
+  # Service specifically for sideloading (requires USB device access)
+  ota-sideload:
+    extends: ota-patcher
+    container_name: android-ota-patcher-sideload
+    privileged: true
+    volumes:
+      - ./data:/data
+      - ./keys:/workspace/keys:ro
+      - /dev/bus/usb:/dev/bus/usb
+    devices:
+      - /dev/bus/usb
+    command: ["sideload", "/data/ota.zip.patched"]
+    restart: "no"
