@@ -1,0 +1,80 @@
+# Container ignore file for Android OTA Patcher
+# This file specifies which files should be excluded when building the container
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Build artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Container files (don't include in build context)
+Containerfile
+Dockerfile
+docker-compose.yml
+.containerignore
+.dockerignore
+
+# Documentation that's not needed in container
+*.md
+!README.md
+
+# Downloaded OTA files (can be large)
+*.zip
+*.zip.patched
+*.img
+
+# Device-specific folders with downloads
+*/cheetah-ota-*.zip
+*/cheetah-ota-*.zip.patched
+devices/*/ota.zip
+devices/*/ota.zip.patched
+devices/*/new-boot.img
+
+# Local configuration files
+chrome_paths.conf
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+data/
+data/**

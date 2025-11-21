@@ -99,8 +99,12 @@ if [ "$NO_DOWNLOAD" -eq 1 ]; then
     $PYTHON "$SCRIPT" "${PYTHON_ARGS[@]}"
 else
     if [ -z "$OUTPUT_DIR" ]; then
-        echo "Error: --output-dir <dir> is required when downloading." >&2
-        exit 1
+        # Default to DATA_DIR/devices/<codename> if available, otherwise use SCRIPT_DIR/devices/<codename>
+        if [ -n "${DATA_DIR:-}" ] && [ -d "${DATA_DIR}" ]; then
+            OUTPUT_DIR="$DATA_DIR/devices/$DEVICE"
+        else
+            OUTPUT_DIR="$SCRIPT_DIR/devices/$DEVICE"
+        fi
     fi
     mkdir -p "$OUTPUT_DIR"
     # Get latest OTA URL
@@ -113,7 +117,14 @@ else
         echo "Error: Could not determine OTA URL for $DEVICE." >&2
         exit 1
     fi
+    
+    # Extract filename from URL to preserve original name
+    OTA_FILENAME=$(basename "$OTA_URL")
     echo "Downloading OTA zip for $DEVICE: $OTA_URL"
-    wget -O "$OUTPUT_DIR/ota.zip" "$OTA_URL"
+    echo "Saving to: $OUTPUT_DIR/$OTA_FILENAME"
+    wget --progress=bar:force:noscroll -O "$OUTPUT_DIR/$OTA_FILENAME" "$OTA_URL"
+    
+    # Create compatibility symlink
+    ln -sf "$OTA_FILENAME" "$OUTPUT_DIR/ota.zip"
     echo "$OTA_URL"
 fi

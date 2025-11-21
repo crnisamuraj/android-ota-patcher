@@ -40,6 +40,9 @@
 # 3. For each device, if a new OTA zip was found, download and patch it
 set -e
 
+# Enable error reporting and exit on failure
+trap 'echo "❌ CI pipeline failed at line $LINENO with exit code $?" >&2; exit 1' ERR
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_SCRIPT="$SCRIPT_DIR/patch-ota.sh"
 
@@ -69,31 +72,80 @@ fi
 for entry in $DEVICES; do
     FOLDER="${entry%%:*}"
     CODENAME="${entry##*:}"
-    DEVICE_DIR="$SCRIPT_DIR/devices/$FOLDER"
+    # Use DATA_DIR if available (container environment), otherwise use local devices
+    if [ -n "${DATA_DIR:-}" ] && [ -d "${DATA_DIR}" ]; then
+        DEVICE_DIR="$DATA_DIR/devices/$CODENAME"
+    else
+        DEVICE_DIR="$SCRIPT_DIR/devices/$CODENAME"
+    fi
     OTA_URL_FILE="$DEVICE_DIR/current_ota_url.txt"
     LAST_URL_FILE="$DEVICE_DIR/last_ota_url.txt"
     OTA_ZIP="$DEVICE_DIR/ota.zip"
 
+    echo "📱 Processing device: $FOLDER ($CODENAME)"
+    echo "📂 Device directory: $DEVICE_DIR"
+    echo "🗂️  Data directory: ${DATA_DIR:-'not set'}"
     mkdir -p "$DEVICE_DIR"
 
-    # Fetch latest OTA URL for this device using run_ota_scraper.sh
-    bash "$SCRIPT_DIR/run_ota_scraper.sh" --device "$CODENAME" --no-download --silent > "$OTA_URL_FILE"
+    # Fetch latest OTA URL for this device
+    echo "🔍 Fetching latest OTA URL for $FOLDER..."
+    
+    # Check if we're running in a container environment (has .venv directory)
+    if [ -d "$SCRIPT_DIR/.venv" ]; then
+        # Running in container - use Python script directly
+        if ! python3 "$SCRIPT_DIR/scrape_ota_selenium.py" --device "$CODENAME" --no-download > "$OTA_URL_FILE" 2>/dev/null; then
+            echo "❌ Failed to fetch OTA URL for $CODENAME using direct Python call" >&2
+            continue
+        fi
+    else
+        # Running on host - use wrapper script
+        if ! bash "$SCRIPT_DIR/run_ota_scraper.sh" --device "$CODENAME" --no-download --silent > "$OTA_URL_FILE"; then
+            echo "❌ Failed to fetch OTA URL for $CODENAME using run_ota_scraper.sh" >&2
+            continue
+        fi
+    fi
+    
     OTA_URL=$(cat "$OTA_URL_FILE" | tail -n 1)
     LAST_URL=""
     [ -f "$LAST_URL_FILE" ] && LAST_URL=$(cat "$LAST_URL_FILE")
-    echo "DEBUG: OTA_URL for $FOLDER: '$OTA_URL'"
-    echo "DEBUG: LAST_URL for $FOLDER: '$LAST_URL'"
-    if [ -z "$OTA_URL" ] || [ -z "$LAST_URL" ] || [ "$OTA_URL" != "$LAST_URL" ]; then
-        echo "New OTA for $FOLDER: $OTA_URL"
-        echo "Downloading OTA zip..."
-        wget -O "$OTA_ZIP" "$OTA_URL"
-        echo "Patching OTA zip for $FOLDER..."
+    
+    echo "🔗 Current OTA URL for $CODENAME: '$OTA_URL'"
+    echo "📝 Last processed URL for $CODENAME: '$LAST_URL'"
+    
+    if [ -z "$OTA_URL" ]; then
+        echo "❌ ERROR: Empty OTA URL for $CODENAME" >&2
+        continue
+    fi
+    
+    if [ -z "$LAST_URL" ] || [ "$OTA_URL" != "$LAST_URL" ]; then
+        echo "✅ New OTA detected for $CODENAME: $OTA_URL"
+        
+        # Extract filename from URL for better organization
+        OTA_FILENAME=$(basename "$OTA_URL")
+        OTA_ZIP_NAMED="$DEVICE_DIR/$OTA_FILENAME"
+        
+        echo "📥 Downloading OTA zip to: $OTA_ZIP_NAMED"
+        # Use wget with progress bar
+        if ! wget --progress=bar:force:noscroll -O "$OTA_ZIP_NAMED" "$OTA_URL"; then
+            echo "❌ Failed to download OTA for $CODENAME" >&2
+            continue
+        fi
+        
+        # Create a symlink for compatibility with existing scripts
+        ln -sf "$OTA_FILENAME" "$OTA_ZIP"
+        
+        echo "🔧 Patching OTA zip for $CODENAME..."
         if bash "$PATCH_SCRIPT" --ota "$OTA_ZIP" --mode rootless --workdir "$DEVICE_DIR"; then
             echo "$OTA_URL" > "$LAST_URL_FILE"
+            echo "✅ Successfully processed $CODENAME"
+            echo "💾 Files preserved in: $DEVICE_DIR"
         else
-            echo "Patching failed for $FOLDER, not updating last_ota_url.txt"
+            echo "❌ Patching failed for $CODENAME, not updating last_ota_url.txt" >&2
         fi
     else
-        echo "No new OTA for $FOLDER, skipping patch."
+        echo "⏭️  No new OTA for $CODENAME, skipping patch."
+        echo "📂 Existing files in: $DEVICE_DIR"
     fi
 done
+
+echo "🏁 CI pipeline completed for all devices"

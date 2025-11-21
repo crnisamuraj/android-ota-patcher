@@ -93,6 +93,9 @@ if [ ! -f "$boot_img" ]; then
   exit 1
 fi
 
+# check kernel version from extracted ota boot img.
+strings $boot_img | grep android
+
 # Extract Image from patched kernel zip
 unzip -j "$patched_kernel_zip" Image -d "$temp_dir"
 if [ ! -f "$temp_dir/Image" ]; then

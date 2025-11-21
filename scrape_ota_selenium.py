@@ -66,6 +66,24 @@ def get_chrome_options(debug=False, chrome_binary_path=None):
     options.add_argument('--disable-web-security')    # Bypass CORS issues
     options.add_argument('--disable-features=VizDisplayCompositor')  # Fix display issues
     
+    # Additional flags for container environments
+    options.add_argument('--disable-extensions')      # Disable Chrome extensions
+    options.add_argument('--disable-plugins')         # Disable all plugins
+    options.add_argument('--no-zygote')              # Don't use zygote process
+    options.add_argument('--single-process')          # Run in single process mode
+    options.add_argument('--disable-background-timer-throttling')  # Prevent throttling
+    options.add_argument('--disable-renderer-backgrounding')       # Prevent backgrounding
+    options.add_argument('--disable-backgrounding-occluded-windows')  # Disable background optimization
+    
+    # Flags to disable X11 and DBus dependencies
+    options.add_argument('--headless=new')            # Use new headless mode
+    options.add_argument('--disable-software-rasterizer')  # Disable software rasterizer
+    options.add_argument('--disable-background-networking')  # Disable background networking
+    options.add_argument('--disable-default-apps')     # Disable default apps
+    options.add_argument('--disable-component-update')  # Disable component updates
+    options.add_argument('--no-default-browser-check')  # Skip default browser check
+    options.add_argument('--use-gl=swiftshader')       # Use software GL implementation
+    
     # Use a random port for remote debugging to avoid conflicts between sessions
     debug_port = random.randint(9222, 9999)
     options.add_argument(f'--remote-debugging-port={debug_port}')
@@ -98,6 +116,13 @@ def setup_chrome_driver(chrome_binary_path=None, debug=False, silent=False):
             print(msg)
     
     try:
+        # First try to use system ChromeDriver if available
+        system_chromedriver = "/usr/bin/chromedriver"
+        if os.path.exists(system_chromedriver):
+            log(f"Using system ChromeDriver: {system_chromedriver}")
+            return Service(system_chromedriver)
+        
+        # Fallback to webdriver-manager
         if chrome_binary_path:
             # For custom Chrome installations, detect version and match ChromeDriver
             result = subprocess.run([chrome_binary_path, '--version'], 
@@ -121,8 +146,15 @@ def setup_chrome_driver(chrome_binary_path=None, debug=False, silent=False):
         return Service(ChromeDriverManager().install())
         
     except Exception as e:
-        log(f"Could not detect Chrome version, using default ChromeDriver: {e}")
-        return Service(ChromeDriverManager().install())
+        log(f"Could not setup ChromeDriver: {e}")
+        # Final fallback - try to find chromedriver in PATH
+        import shutil
+        chromedriver_path = shutil.which('chromedriver')
+        if chromedriver_path:
+            log(f"Found ChromeDriver in PATH: {chromedriver_path}")
+            return Service(chromedriver_path)
+        else:
+            raise Exception(f"ChromeDriver not found anywhere: {e}")
 
 def get_latest_ota_zip(device_codename, debug=False, download=True, silent=False, chrome_binary_path=None):
     """

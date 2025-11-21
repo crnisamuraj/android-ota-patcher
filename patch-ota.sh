@@ -28,6 +28,10 @@
 # Requirements:
 #   - avbroot (must be in PATH)
 #
+# Environment Variables:
+#   - PASSPHRASE_AVB: Passphrase for encrypted AVB signing key
+#   - PASSPHRASE_OTA: Passphrase for encrypted OTA signing key
+#
 # Output:
 #   - <ota_zip>.patched (patched OTA zip)
 #
@@ -89,6 +93,19 @@ if [ -n "$workdir" ]; then
   cd "$workdir"
 fi
 
+# Build passphrase arguments for avbroot if environment variables are set
+PASSPHRASE_ARGS=()
+if [ -n "${PASSPHRASE_AVB:-}" ]; then
+    PASSPHRASE_ARGS+=("--pass-avb-env-var" "PASSPHRASE_AVB")
+    echo "🔐 Using passphrase for AVB key"
+fi
+if [ -n "${PASSPHRASE_OTA:-}" ]; then
+    PASSPHRASE_ARGS+=("--pass-ota-env-var" "PASSPHRASE_OTA")
+    echo "🔐 Using passphrase for OTA key"
+fi
+
+echo "🔧 Patching OTA with avbroot (mode: $mode)..."
+
 case "$mode" in
   magisk)
     if [ -z "$magisk_apk" ] || [ -z "$magisk_preinit_device" ]; then
@@ -101,7 +118,8 @@ case "$mode" in
       --key-ota "$key_ota" \
       --cert-ota "$cert_ota" \
       --magisk "$magisk_apk" \
-      --magisk-preinit-device "$magisk_preinit_device"
+      --magisk-preinit-device "$magisk_preinit_device" \
+      ${PASSPHRASE_ARGS[@]:+"${PASSPHRASE_ARGS[@]}"}
     ;;
   prepatched)
     if [ -z "$prepatched_path" ]; then
@@ -113,7 +131,8 @@ case "$mode" in
       --key-avb "$key_avb" \
       --key-ota "$key_ota" \
       --cert-ota "$cert_ota" \
-      --prepatched "$prepatched_path"
+      --prepatched "$prepatched_path" \
+      ${PASSPHRASE_ARGS[@]:+"${PASSPHRASE_ARGS[@]}"}
     ;;
   rootless)
     avbroot ota patch \
@@ -121,7 +140,8 @@ case "$mode" in
       --key-avb "$key_avb" \
       --key-ota "$key_ota" \
       --cert-ota "$cert_ota" \
-      --rootless
+      --rootless \
+      ${PASSPHRASE_ARGS[@]:+"${PASSPHRASE_ARGS[@]}"}
     ;;
   *)
     echo "Invalid mode: $mode"
