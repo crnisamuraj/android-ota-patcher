@@ -40,7 +40,8 @@ wheels/
 *.egg
 
 # Working directories and temporary files
-data/
+data/*
+keys/*
 tmp/
 temp/
 .tmp/
