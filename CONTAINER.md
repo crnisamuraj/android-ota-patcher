@@ -125,6 +125,42 @@ podman run --rm \
   android-ota-patcher sideload /data/ota.zip.patched
 ```
 
+### Advanced Usage Examples
+
+#### Using Passphrases and Custom Workdir
+```bash
+# Interactive shell with passphrases
+podman run --rm -it \
+  -v ./data:/data:z \
+  -v ./keys:/workspace/keys:z \
+  -e PASSPHRASE_AVB=1312 \
+  -e PASSPHRASE_OTA=1312 \
+  -e WORKDIR=/data/devices/cheetah/905 \
+  android-ota-patcher:latest shell
+
+# Boot patch with custom kernel and workdir
+podman run --rm \
+  -v ./data:/data:z \
+  -v ./keys:/workspace/keys:z \
+  -e WORKDIR=/data/devices/cheetah/905 \
+  android-ota-patcher:latest boot-patch \
+  /data/devices/cheetah/905/cheetah-ota-bp3a.250905.014-ead1d581.zip \
+  /data/devices/cheetah/905/WKSU-13725-android14-6.1.134-2025-05-AnyKernel3.zip
+
+# Patch with prepatched boot image and passphrases
+podman run --rm \
+  -v ./data:/data:z \
+  -v ./keys:/workspace/keys:z \
+  -e PASSPHRASE_AVB=1312 \
+  -e PASSPHRASE_OTA=1312 \
+  -e WORKDIR=/data/devices/cheetah/905 \
+  android-ota-patcher:latest patch \
+  --workdir /data/devices/cheetah/905 \
+  --ota /data/devices/cheetah/905/cheetah-ota-bp3a.250905.014-ead1d581.zip \
+  --mode prepatched \
+  --prepatched /data/devices/cheetah/905/new-boot.img
+```
+
 ## Volume Mounts
 
 ### Required Volumes
@@ -180,16 +216,26 @@ docker-compose run ota-sideload
 ```
 
 ## Makefile Usage
-
 The included Makefile provides convenient shortcuts:
 
 ```bash
 make build                    # Build container
 make setup                    # Create directories  
-make help                     # Show all commands
-make scrape device=cheetah    # Scrape OTA URL
-make download device=cheetah  # Download OTA
-make ci                       # Run CI pipeline
+### Make Commands (Recommended)
+```bash
+make help                     # Show all options
+make scrape device=cheetah    # Scrape OTA
+make download device=cheetah  # Download OTA  
+make ci                       # Run CI pipeline (default devices)
+make ci devices="cheetah:cheetah pixel8:shiba" # Run CI for specific devices
+
+# Patching
+make patch ota=/data/ota.zip mode=rootless
+make patch ota=/data/ota.zip mode=prepatched prepatched=/data/new-boot.img
+
+# Boot Patching
+make boot-patch ota=/data/ota.zip kernel=/data/kernel.zip
+
 make shell                    # Interactive shell
 make clean                    # Clean up container and cache
 ```
@@ -226,6 +272,13 @@ openssl genrsa -out keys/avb.key 4096
 openssl genrsa -out keys/ota.key 4096
 openssl req -new -x509 -key keys/ota.key -out keys/ota.crt -days 365
 ```
+
+## Security Features
+
+- **Read-only key mounts** - Keys mounted as read-only
+- **Non-root execution** - Container runs as non-privileged user
+- **Minimal attack surface** - Only essential packages installed
+- **Automated security scanning** - Trivy scans in CI/CD
 
 ## Troubleshooting
 

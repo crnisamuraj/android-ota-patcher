@@ -46,9 +46,36 @@ trap 'echo "❌ CI pipeline failed at line $LINENO with exit code $?" >&2; exit 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_SCRIPT="$SCRIPT_DIR/patch-ota.sh"
 
+# Default devices from devices.yaml or fallback
+get_default_devices() {
+    local devices_file="$SCRIPT_DIR/devices.yaml"
+    local devices_list=""
+    
+    if [ -f "$devices_file" ]; then
+        # Simple parsing of devices.yaml (folder and codename)
+        # Looks for: folder: <value> and codename: <value>
+        # Assumes consistent ordering or simple structure
+        while IFS= read -r line; do
+            if [[ $line =~ folder:[[:space:]]*(.*) ]]; then
+                current_folder="${BASH_REMATCH[1]}"
+            elif [[ $line =~ codename:[[:space:]]*(.*) ]]; then
+                current_codename="${BASH_REMATCH[1]}"
+                if [ -n "$current_folder" ] && [ -n "$current_codename" ]; then
+                    devices_list="$devices_list $current_folder:$current_codename"
+                    current_folder=""
+                    current_codename=""
+                fi
+            fi
+        done < "$devices_file"
+    fi
+    
+    # Trim leading space
+    echo "${devices_list#" "}"
+}
+
 HARDCODED_DEVICES="cheetah:cheetah"
 
-# Accept --devices arg, else use DEVICES env, else fallback
+# Accept --devices arg, else use DEVICES env, else parse devices.yaml, else fallback
 DEVICES_ARG=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -64,7 +91,14 @@ if [ -n "$DEVICES_ARG" ]; then
 elif [ -n "$DEVICES" ]; then
     :
 else
-    DEVICES="$HARDCODED_DEVICES"
+    DETECTED_DEVICES=$(get_default_devices)
+    if [ -n "$DETECTED_DEVICES" ]; then
+        DEVICES="$DETECTED_DEVICES"
+        echo "📋 Loaded devices from devices.yaml: $DEVICES"
+    else
+        DEVICES="$HARDCODED_DEVICES"
+        echo "⚠️  Could not load devices.yaml, using fallback: $DEVICES"
+    fi
 fi
 
 

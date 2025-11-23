@@ -6,6 +6,9 @@ An automated tool for downloading and patching Google Pixel OTA updates with avb
 
 The project is packaged as a container for easy deployment and dependency management.
 
+> [!TIP]
+> For detailed container instructions, advanced usage, and troubleshooting, see [CONTAINER.md](CONTAINER.md).
+
 ### Quick Start
 
 1. **Build the container:**
@@ -13,29 +16,25 @@ The project is packaged as a container for easy deployment and dependency manage
    ./build-container.sh
    ```
 
-2. **Create directories for data and keys:**
+2. **Setup:**
    ```bash
-   mkdir -p data keys
-   # Copy your signing keys to ./keys/
-   cp /path/to/your/avb.key ./keys/
-   cp /path/to/your/ota.key ./keys/
-   cp /path/to/your/ota.crt ./keys/
-   cp /path/to/your/Magisk-v29.0.apk ./keys/
+   ./setup.sh
    ```
+   *Follow the prompts to set up directories and keys.*
+
 
 3. **Run commands:**
    ```bash
    # Show help
-   podman run --rm android-ota-patcher
+   make help
+   ```
 
    # Scrape latest OTA URL
-   podman run --rm android-ota-patcher scrape --device cheetah
+   `make scrape device=cheetah`
 
    # Download and patch OTA
-   podman run --rm \
-     -v ./data:/data:z \
-     -v ./keys:/workspace/keys:z \
-     android-ota-patcher ci
+   ```bash
+   make ci
    ```
 
 ### Container Commands
@@ -143,6 +142,11 @@ bash run_ota_scraper.sh --devices="pixel7pro:cheetah pixel7:panther"
 - The script is ready for scheduled runs in GitLab CI or similar systems.
 - See `.gitlab-ci.yml` for an example job that commits the latest OTA info after each run.
 
+### Chrome/Browser Issues
+- The container uses Chromium in headless mode
+- For systems with different Chrome installations, see [CHROME_CONFIG.md](CHROME_CONFIG.md)
+- Debug with `--debug` flag to see browser output
+
 ### 5. Debugging
 - Pass `--debug` to the Python script for verbose output.
 
@@ -210,9 +214,6 @@ podman run --rm \
 ```bash
 # Build with Podman
 podman build -t android-ota-patcher -f Containerfile .
-
-# Build with Docker
-docker build -t android-ota-patcher -f Containerfile .
 
 # Build for different architecture
 TARGET_ARCH=arm64 ./build-container.sh

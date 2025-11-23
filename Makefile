@@ -105,13 +105,21 @@ download: setup ## Download latest OTA (device=cheetah)
 	@echo "📥 Downloading OTA for device: $(or $(device),cheetah)"
 	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) download --device $(or $(device),cheetah)
 
-patch: setup ## Patch OTA file (mode=rootless)
+patch: setup ## Patch OTA file (Usage: make patch ota=... mode=... [prepatched=...] [magisk_preinit=...])
 	@echo "🔧 Patching OTA..."
-	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) patch $(PATCH_ARGS)
+	$(eval ARGS := $(if $(ota),--ota $(ota),) $(if $(mode),--mode $(mode),) $(if $(prepatched),--prepatched $(prepatched),) $(if $(magisk_preinit),--magisk-preinit-device $(magisk_preinit),) $(if $(workdir),--workdir $(workdir),))
+	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) patch $(ARGS) $(PATCH_ARGS)
 
-ci: setup ## Run CI pipeline
+boot-patch: setup ## Patch boot image (Usage: make boot-patch ota=... kernel=... [workdir=...])
+	@echo "🔧 Patching boot image..."
+	$(if $(ota),,$(error "ota" argument is required (e.g., make boot-patch ota=/data/ota.zip ...)))
+	$(if $(kernel),,$(error "kernel" argument is required (e.g., make boot-patch kernel=/data/kernel.zip ...)))
+	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) boot-patch $(ota) $(kernel) $(or $(workdir),/data/workdir)
+
+ci: setup ## Run CI pipeline (Usage: make ci [devices="cheetah:cheetah ..."])
 	@echo "🚀 Running CI pipeline..."
-	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) ci $(CI_ARGS)
+	$(eval ARGS := $(if $(devices),--devices "$(devices)",))
+	$(RUNTIME) run $(RUN_FLAGS) $(CONTAINER_NAME):$(CONTAINER_TAG) ci $(ARGS) $(CI_ARGS)
 
 sideload: setup ## Sideload patched OTA to device (requires file= parameter)
 	@echo "📱 Sideloading $(file)..."
